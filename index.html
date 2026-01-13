@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AKB Smart GST Invoice</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>AKB Smart GST Invoice</h2>
+
+<nav>
+<button onclick="show('dash')">🏠 Dashboard</button>
+<button onclick="show('create')">➕ Invoice</button>
+<button onclick="show('clients')">👤 Clients</button>
+<button onclick="show('products')">📦 Products</button>
+<button onclick="show('list')">📄 Invoices</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dash" class="screen active">
+  <div class="card" id="todayTotal">Today: ₹0</div>
+  <div class="card" id="monthTotal">Month: ₹0</div>
+  <div class="card" id="invoiceCount">Invoices: 0</div>
+</div>
+
+<!-- CREATE INVOICE -->
+<div id="create" class="screen">
+
+<select id="invoiceType" onchange="toggleTransport()">
+  <option value="SCRAP">Scrap / Waste</option>
+  <option value="TRADE">Trading</option>
+  <option value="TRANSPORT">Transport</option>
+</select>
+
+<input id="invoiceNo" readonly>
+<input type="date" id="invoiceDate">
+
+<h3>Client</h3>
+<select id="clientSelect" onchange="fillClient()"></select>
+<input placeholder="Company Name" id="customerName">
+<input placeholder="Address" id="customerAddress">
+<input placeholder="GSTIN" id="customerGST">
+<input placeholder="Phone" id="customerPhone">
+<input placeholder="Email" id="customerEmail">
+
+<div id="transportBox">
+<input placeholder="Vehicle No" id="vehicleNo">
+<input placeholder="E-Way Bill" id="ewayBill">
+<input placeholder="Place of Supply" id="placeSupply">
+</div>
+
+<h3>Items</h3>
+<table id="itemsTable">
+<thead>
+<tr>
+<th>Sl</th><th>Product</th><th>HSN</th><th>UOM</th>
+<th>Qty</th><th>Rate</th><th>Amount</th><th>❌</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<button onclick="addRow()">➕ Add Item</button>
+
+<h3>GST</h3>
+<input id="subtotal" readonly>
+<input id="cgstP" value="9"> CGST %
+<input id="sgstP" value="9"> SGST %
+<input id="igstP" value="0"> IGST %
+
+<br><br>
+<input id="grandTotal" readonly>
+
+<br><br>
+<button onclick="saveInvoice()">✅ Save & Generate PDF</button>
+
+</div>
+
+<!-- CLIENT MASTER -->
+<div id="clients" class="screen">
+<h3>Add Client</h3>
+<input id="cName" placeholder="Company Name">
+<input id="cAddress" placeholder="Address">
+<input id="cGST" placeholder="GSTIN">
+<input id="cPhone" placeholder="Contact No">
+<input id="cEmail" placeholder="Email">
+<br><br>
+<button onclick="saveClient()">💾 Save Client</button>
+<ul id="clientList"></ul>
+</div>
+
+<!-- PRODUCT MASTER -->
+<div id="products" class="screen">
+<h3>Add Product</h3>
+<input id="pName" placeholder="Product Name">
+<input id="pHSN" placeholder="HSN Code">
+<input id="pUOM" placeholder="UOM">
+<input id="pRate" placeholder="Rate">
+<br><br>
+<button onclick="saveProduct()">💾 Save Product</button>
+<ul id="productList"></ul>
+</div>
+
+<!-- INVOICE LIST -->
+<div id="list" class="screen">
+<ul id="invoiceList"></ul>
+</div>
+
+<!-- PDF -->
+<div id="invoicePDF" class="invoice">
+  <div id="copies"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
