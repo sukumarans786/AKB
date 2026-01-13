@@ -1,203 +1,136 @@
-let tbody=document.querySelector("#itemsTable tbody");
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AKB Smart GST Invoice</title>
 
-/* ---------- NAV ---------- */
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<link rel="stylesheet" href="style.css">
 
-function show(id){
- document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
- document.getElementById(id).classList.add("active");
- if(id=="clients") loadClients();
- if(id=="products") loadProducts();
- if(id=="list") renderInvoices();
- if(id=="dash") loadDashboard();
-}
+<script type="module">
+  // Import the functions you need from the SDKs (using CDN links for the browser)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
-/* ---------- FINANCIAL YEAR INVOICE ---------- */
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUE38MlxCLiOu29YKuRoqO2o6ZHgTYj1c",
+    authDomain: "akb-ca6ba.firebaseapp.com",
+    projectId: "akb-ca6ba",
+    storageBucket: "akb-ca6ba.firebasestorage.app",
+    messagingSenderId: "233647436938",
+    appId: "1:233647436938:web:3b70abf8bbbd0569832973",
+    measurementId: "G-0BE0T2E31T"
+  };
 
-function generateInvoiceNo(){
- let d=new Date(),y=d.getFullYear(),m=d.getMonth()+1;
- let fy=m<=3?(y-1)+"-"+String(y).slice(2):y+"-"+String(y+1).slice(2);
- let key="AKB_"+fy;
- let n=(localStorage.getItem(key)||0);
- n++;localStorage.setItem(key,n);
- return "AKB-"+String(n).padStart(3,"0")+"/"+fy;
-}
-invoiceNo.value=generateInvoiceNo();
-invoiceDate.valueAsDate=new Date();
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  
+  console.log("Firebase connected successfully");
+</script>
+</head>
+<body>
 
-/* ---------- CLIENT MASTER ---------- */
+<h2>AKB Smart GST Invoice</h2>
 
-function saveClient(){
- let list=JSON.parse(localStorage.getItem("CLIENTS")||"[]");
- list.push({
-  name:cName.value,address:cAddress.value,gst:cGST.value,
-  phone:cPhone.value,email:cEmail.value
- });
- localStorage.setItem("CLIENTS",JSON.stringify(list));
- loadClients(); fillClientDropdown();
-}
+<nav>
+<button onclick="show('dash')">🏠 Dashboard</button>
+<button onclick="show('create')">➕ Invoice</button>
+<button onclick="show('clients')">👤 Clients</button>
+<button onclick="show('products')">📦 Products</button>
+<button onclick="show('list')">📄 Invoices</button>
+</nav>
 
-function loadClients(){
- let list=JSON.parse(localStorage.getItem("CLIENTS")||"[]");
- clientList.innerHTML="";
- list.forEach(c=>{
-  let li=document.createElement("li");
-  li.innerText=c.name+" | "+c.phone;
-  clientList.appendChild(li);
- });
- fillClientDropdown();
-}
+<div id="dash" class="screen active">
+  <div class="card" id="todayTotal">Today: ₹0</div>
+  <div class="card" id="monthTotal">Month: ₹0</div>
+  <div class="card" id="invoiceCount">Invoices: 0</div>
+</div>
 
-function fillClientDropdown(){
- clientSelect.innerHTML="<option value=''>Select Client</option>";
- JSON.parse(localStorage.getItem("CLIENTS")||"[]")
- .forEach((c,i)=>{
-  let o=document.createElement("option");
-  o.value=i; o.text=c.name;
-  clientSelect.appendChild(o);
- });
-}
+<div id="create" class="screen">
 
-function fillClient(){
- let list=JSON.parse(localStorage.getItem("CLIENTS")||"[]");
- let c=list[clientSelect.value];
- if(!c) return;
- customerName.value=c.name;
- customerAddress.value=c.address;
- customerGST.value=c.gst;
- customerPhone.value=c.phone;
- customerEmail.value=c.email;
-}
+<select id="invoiceType" onchange="toggleTransport()">
+  <option value="SCRAP">Scrap / Waste</option>
+  <option value="TRADE">Trading</option>
+  <option value="TRANSPORT">Transport</option>
+</select>
 
-/* ---------- PRODUCT MASTER ---------- */
+<input id="invoiceNo" readonly>
+<input type="date" id="invoiceDate">
 
-function saveProduct(){
- let list=JSON.parse(localStorage.getItem("PRODUCTS")||"[]");
- list.push({name:pName.value,hsn:pHSN.value,uom:pUOM.value,rate:pRate.value});
- localStorage.setItem("PRODUCTS",JSON.stringify(list));
- loadProducts();
-}
+<h3>Client</h3>
+<select id="clientSelect" onchange="fillClient()"></select>
+<input placeholder="Company Name" id="customerName">
+<input placeholder="Address" id="customerAddress">
+<input placeholder="GSTIN" id="customerGST">
+<input placeholder="Phone" id="customerPhone">
+<input placeholder="Email" id="customerEmail">
 
-function loadProducts(){
- let list=JSON.parse(localStorage.getItem("PRODUCTS")||"[]");
- productList.innerHTML="";
- list.forEach(p=>{
-  let li=document.createElement("li");
-  li.innerText=p.name+" | ₹"+p.rate;
-  productList.appendChild(li);
- });
-}
+<div id="transportBox">
+<input placeholder="Vehicle No" id="vehicleNo">
+<input placeholder="E-Way Bill" id="ewayBill">
+<input placeholder="Place of Supply" id="placeSupply">
+</div>
 
-/* ---------- ITEMS ---------- */
+<h3>Items</h3>
+<table id="itemsTable">
+<thead>
+<tr>
+<th>Sl</th><th>Product</th><th>HSN</th><th>UOM</th>
+<th>Qty</th><th>Rate</th><th>Amount</th><th>❌</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 
-function addRow(){
- let row=tbody.insertRow();
- row.innerHTML=`
- <td>${tbody.rows.length}</td>
- <td><input list="prodList"></td>
- <td><input></td>
- <td><input></td>
- <td><input type="number" value="1" oninput="calc(this)"></td>
- <td><input type="number" value="0" oninput="calc(this)"></td>
- <td class="total">0</td>
- <td><button onclick="this.closest('tr').remove();calculate()">❌</button></td>`;
-}
-addRow();
+<button onclick="addRow()">➕ Add Item</button>
 
-function calc(el){
- let r=el.closest("tr");
- let q=r.cells[4].children[0].value||0;
- let rate=r.cells[5].children[0].value||0;
- r.querySelector(".total").innerText=(q*rate).toFixed(2);
- calculate();
-}
+<h3>GST</h3>
+<input id="subtotal" readonly>
+<input id="cgstP" value="9"> CGST %
+<input id="sgstP" value="9"> SGST %
+<input id="igstP" value="0"> IGST %
 
-function calculate(){
- let sum=0;
- document.querySelectorAll(".total").forEach(t=>sum+=Number(t.innerText||0));
- subtotal.value=sum.toFixed(2);
- let g=sum*(cgstP.value/100)+sum*(sgstP.value/100)+sum*(igstP.value/100);
- grandTotal.value=(sum+g).toFixed(2);
-}
+<br><br>
+<input id="grandTotal" readonly>
 
-/* ---------- SAVE INVOICE ---------- */
+<br><br>
+<button onclick="saveInvoice()">✅ Save & Generate PDF</button>
 
-function saveInvoice(){
- let list=JSON.parse(localStorage.getItem("INVOICES")||"[]");
- list.push({no:invoiceNo.value, date:invoiceDate.value, total:grandTotal.value});
- localStorage.setItem("INVOICES",JSON.stringify(list));
- generatePDF();
-}
+</div>
 
-/* ---------- DASHBOARD ---------- */
+<div id="clients" class="screen">
+<h3>Add Client</h3>
+<input id="cName" placeholder="Company Name">
+<input id="cAddress" placeholder="Address">
+<input id="cGST" placeholder="GSTIN">
+<input id="cPhone" placeholder="Contact No">
+<input id="cEmail" placeholder="Email">
+<br><br>
+<button onclick="saveClient()">💾 Save Client</button>
+<ul id="clientList"></ul>
+</div>
 
-function loadDashboard(){
- let list=JSON.parse(localStorage.getItem("INVOICES")||"[]");
- invoiceCount.innerText="Invoices: "+list.length;
-}
+<div id="products" class="screen">
+<h3>Add Product</h3>
+<input id="pName" placeholder="Product Name">
+<input id="pHSN" placeholder="HSN Code">
+<input id="pUOM" placeholder="UOM">
+<input id="pRate" placeholder="Rate">
+<br><br>
+<button onclick="saveProduct()">💾 Save Product</button>
+<ul id="productList"></ul>
+</div>
 
-/* ---------- INVOICE LIST ---------- */
+<div id="list" class="screen">
+<ul id="invoiceList"></ul>
+</div>
 
-function renderInvoices(){
- let list=JSON.parse(localStorage.getItem("INVOICES")||"[]");
- invoiceList.innerHTML="";
- list.forEach(i=>{
-  let li=document.createElement("li");
-  li.innerText=i.no+" — ₹"+i.total;
-  invoiceList.appendChild(li);
- });
-}
+<div id="invoicePDF" class="invoice">
+  <div id="copies"></div>
+</div>
 
-/* ---------- TRANSPORT ---------- */
-
-function toggleTransport(){
- transportBox.style.display=invoiceType.value=="TRANSPORT"?"block":"none";
-}
-toggleTransport();
-
-/* ---------- PDF ---------- */
-
-function generatePDF(){
- copies.innerHTML="";
- ["ORIGINAL","TRANSPORT COPY","DUPLICATE","EXTRA"].forEach(t=>{
-  copies.innerHTML+=buildCopy(t);
- });
-
- html2pdf().from(invoicePDF).set({
-  filename:invoiceNo.value+".pdf",
-  jsPDF:{format:"a4"}
- }).save();
-}
-
-function buildCopy(type){
- let rows="";
- document.querySelectorAll("#itemsTable tbody tr").forEach((r,i)=>{
-  rows+=`<tr><td>${i+1}</td><td>${r.cells[1].children[0].value}</td>
-  <td>${r.cells[2].children[0].value}</td><td>${r.cells[3].children[0].value}</td>
-  <td>${r.cells[4].children[0].value}</td><td>${r.cells[5].children[0].value}</td>
-  <td>${r.cells[6].innerText}</td></tr>`;
- });
-
- return `
- <div class="copy">
- <h3 style="text-align:center">GST TAX INVOICE - ${type}</h3>
- <p><b>A.K.B ENTERPRISES</b><br>No 3C, LF Road, Ranipet - 632401<br>GSTIN: 33AMKPB3465ZN</p>
-
- <p><b>Invoice No:</b> ${invoiceNo.value} | <b>Date:</b> ${invoiceDate.value}</p>
-
- <p><b>Details of Receiver / Billed to</b><br>
- ${customerName.value}<br>${customerAddress.value}<br>
- GSTIN: ${customerGST.value}<br>
- Phone: ${customerPhone.value} | Email: ${customerEmail.value}</p>
-
- <table>
- <tr><th>Sl</th><th>Product</th><th>HSN</th><th>UOM</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
- ${rows}
- </table>
-
- <h3>Grand Total: ₹${grandTotal.value}</h3>
-
- <p><b>Bank:</b> FEDERAL BANK | A/c: 18335500000724 | IFSC: FDRL0001833</p>
-
- <p>This is a computer-generated invoice</p>
- </div>`;
-}
+<script src="script.js"></script>
+</body>
+</html>
